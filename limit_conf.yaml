@@ -1,0 +1,11 @@
+time:
+  python: 10s
+  go: 10s
+  c: 3s
+  cpp: 3s
+
+memory:
+  python: 10M
+  go: 10M
+  c: 3M
+  cpp: 3M
