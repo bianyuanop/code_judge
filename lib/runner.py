@@ -82,13 +82,8 @@ class Runner:
 			retval = p.stdout.read().decode('utf8')
 			errmess = p.stderr.read().decode('utf8')
 
+		return err_code, retval, errmess
 
-		print(cmd)
-		if err_code:
-			print(colored('[INFO]', 'red'), 'error occured, error code: {0}, error message: {1}'.format(err_code, errmess))
-		else:
-			print(colored('[INFO]', 'green'), "running finished ", retval)
-			return retval
 
 if __name__ == '__main__':
 	limit = {
