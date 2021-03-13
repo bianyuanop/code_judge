@@ -13,6 +13,8 @@ class JudgeHoster:
 	'''
 	def __init__(self, host='localhost', port=5000):
 		self.max_thread = 1000
+		self.count = 0
+
 		self.judgeServer = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		self.judgeServer.bind((host, port))
 		self.judgeServer.listen(1)
@@ -34,13 +36,19 @@ class JudgeHoster:
 						output = result['retval'],
 						right = self.outputRight(result['retval'], self.supposeDict[r_id])
 					)
+					self.send(msg)
 					self.supposeDict.pop(r_id)
+					self.count -= 1
 
-			msg = self.parseMsg(self.receive())
+			if self.count >= self.max_thread:
+				continue
+
+			msg = self.receive()
 			self.supposeDict[msg['jId']] = msg['suppose']
 			runner = Runner(msg['lang'], msg['code'], msg['p_in'], limit={'time': 10, 'mem': None})
 			runner.start()
 			self.runnerThreads.put((msg['jId'], runner))
+			self.count += 1
 					
 			
 	def send(self, msg):
@@ -48,10 +56,11 @@ class JudgeHoster:
 			print(colored('[ERRO]', 'red'), "msg to client is not str")
 			return
 
-		self.judgeServer.sendall(msg)
+		conn, addr= self.judgeServer.accept()
+		conn.sendall(msg)
 
 	def receive(self):
-		addr, conn = self.judgeServer.accept()
+		conn, addr= self.judgeServer.accept()
 		print(colored('[INFO]', 'cyan'), "Addr:" + addr + " connected.")
 
 		data = recv_all(conn).decode('utf8')
@@ -79,6 +88,7 @@ class JudgeHoster:
 		p_in = msgJson['input']
 
 		return {
+			"jId": jId,
 			"code": code,
 			"lang": lang,
 			"suppose": suppose,
@@ -88,7 +98,7 @@ class JudgeHoster:
         # Interface return
         # - error : err_code and errmess {'err_code': 1, 'errmess'}
         # - output : 
-	def writeMsg(self, err_code, error, ouput, right):
+	def writeMsg(self, err_code, error, output, right):
 		return str({
 			'err_code': err_code,
 			'error': error,
@@ -113,4 +123,14 @@ def recv_all(sock):
 
 
 if __name__ == '__main__':
-	pass
+	j = JudgeHoster()
+	print(j.writeMsg(1, "something", "output", True))
+	supposeIn = {
+		'jId':1,
+		'code':"Code",
+		'lang':'go',
+		'suppose':'\n',
+		'input':'input',
+	}
+	print(j.parseMsg(json.dumps(supposeIn)))
+	
