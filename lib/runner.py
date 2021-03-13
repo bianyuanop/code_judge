@@ -4,15 +4,9 @@ import threading
 from termcolor import colored
 
 
-Errors = {
-	0: "RE",
-	1: "TLE",
-	2: "WA",
-	3: "",
-}
-
 if not os.path.exists('tmp'):
 	os.mkdir("tmp")
+
 
 class Runner(threading.Thread):
 	'''
@@ -102,30 +96,9 @@ class Runner(threading.Thread):
 					cmd = ['./' + self.filename.split('.')[0]]
 					err_code, retval, errmess = self.sub(cmd, self.p_in)
 		except Exception as e:
-			print(e)
+			print(colored('[ERROR]', 'red'), "Something wrong happend: ", e)
 			return
 
 		self.result['err_code'] = err_code
 		self.result['retval'] = retval
 		self.result['errmess'] = errmess
-
-
-if __name__ == '__main__':
-	limit = {
-		'time': None,
-		'mem': None
-	}
-	lang = 'c'
-	code = r'''#include <stdio.h>
-int main() {
-	char name[80];
-	scanf("%s", name);
-	printf("%s\n", name);
-	return 0;;
-}'''
-	p_in = "FUCK you son of bitch".encode('utf8')
-	r = Runner(lang, code, p_in, limit)
-	r.start()
-	r.join()
-	result = r.getResult()
-	print(result)
