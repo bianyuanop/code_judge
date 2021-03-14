@@ -17,56 +17,61 @@ class JudgeHoster:
 
 		self.judgeServer = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		self.judgeServer.bind((host, port))
-		self.judgeServer.listen(1)
 
 		self.runnerThreads = queue.Queue()
 		self.supposeDict = {}
 
 	def run(self):
+		self.judgeServer.listen(1)
 		while True:
-			r_id, runner = self.runnerThreads.get()		
-			if runner.is_alive():
-				self.runnerThreads.put((r_id, runner))
-			else:
-				result = runner.getResult()
-				if result['err_code']:
-					msg = self.writeMsg(
-						err_code = result['err_code'],
-						error = result['errmess'],
-						output = result['retval'],
-						right = self.outputRight(result['retval'], self.supposeDict[r_id])
-					)
-					self.send(msg)
-					self.supposeDict.pop(r_id)
-					self.count -= 1
+			# in one loop, just one type of instruction will be execute
+			# send or recv, once one of them been executed, then continue next loop
+			conn, addr = self.judgeServer.accept()
 
-			if self.count >= self.max_thread:
-				continue
+			# Check those already done tasks
+			toSend = None
+			print("is empty: ", self.runnerThreads.empty())
+			while not self.runnerThreads.empty():
+				r_id, runner = self.runnerThreads.get()
+				if runner.is_alive():
+					self.runnerThreads.put((r_id, runner))
+					continue	
 
-			msg = self.receive()
-			self.supposeDict[msg['jId']] = msg['suppose']
-			runner = Runner(msg['lang'], msg['code'], msg['p_in'], limit={'time': 10, 'mem': None})
-			runner.start()
-			self.runnerThreads.put((msg['jId'], runner))
-			self.count += 1
-					
+				runResult = runner.getResult()
+				print(runResult)
+				toSend = {
+					'err_code': runResult['err_code'],
+					'error': runResult['errmess'],
+					'output': runResult['retval'],
+					'right': self.outputRight(runResult['retval'], self.supposeDict[r_id])
+				}
+				self.supposeDict.pop(r_id)
+				break
 			
-	def send(self, msg):
-		if type(msg) is not str:
-			print(colored('[ERRO]', 'red'), "msg to client is not str")
-			return
+			# if no process is done or judge list empty socket send b''
+			if toSend:
+				conn.sendall(json.dumps(toSend).encode('utf8'))
+				conn.close()
+				continue
+			else:
+				conn.send(b'')
 
-		conn, addr= self.judgeServer.accept()
-		conn.sendall(msg)
+			# Producer must send b'' then loop can go on if there is no judgement any more
+			msg = recv_all(conn)
+			conn.close()
+			print("MSG: ", msg)
+			if not msg:
+				continue	
 
-	def receive(self):
-		conn, addr= self.judgeServer.accept()
-		print(colored('[INFO]', 'cyan'), "Addr:" + addr + " connected.")
+			msgJson = self.parseMsg(msg)	
+			r_id = msgJson['jId']
+			runner = Runner(msgJson['lang'], msgJson['code'], msgJson['p_in'],{'time':10, 'mem': None})
+			runner.start()
+			self.supposeDict[r_id] = msgJson['suppose']
 
-		data = recv_all(conn).decode('utf8')
-		dataJson = self.parseMsg(data)
+			self.runnerThreads.put((r_id, runner))
 
-		return dataJson
+					
 		
 	def parseMsg(self, msg):
         # Interface structure
