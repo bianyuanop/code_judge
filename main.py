@@ -10,6 +10,7 @@ class JudgeHoster:
 	
 	'''
 	using a tcp socket to get data transmission and put this in docker, that will be relatively safe
+	sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) # use this for long term of socket using for client socket
 	'''
 	def __init__(self, host='localhost', port=5000):
 		self.max_thread = 1000
@@ -23,10 +24,10 @@ class JudgeHoster:
 
 	def run(self):
 		self.judgeServer.listen(1)
+		conn, addr = self.judgeServer.accept()
 		while True:
 			# in one loop, just one type of instruction will be execute
 			# send or recv, once one of them been executed, then continue next loop
-			conn, addr = self.judgeServer.accept()
 
 			# Check those already done tasks
 			toSend = None
@@ -51,14 +52,12 @@ class JudgeHoster:
 			# if no process is done or judge list empty socket send b''
 			if toSend:
 				conn.sendall(json.dumps(toSend).encode('utf8'))
-				conn.close()
 				continue
 			else:
 				conn.send(b'')
 
 			# Producer must send b'' then loop can go on if there is no judgement any more
 			msg = recv_all(conn)
-			conn.close()
 			print("MSG: ", msg)
 			if not msg:
 				continue	

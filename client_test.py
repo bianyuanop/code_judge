@@ -4,23 +4,17 @@ import json
 from time import sleep
 from main import recv_all
 
-def getAMsg(location=('localhost', 5000)):
-	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	sock.connect(location)
+def getAMsg(sock , location=('localhost', 5000)):
 	data = recv_all(sock)
-	sock.close()
 	return data.decode('utf8')
 
-def putAMsg(msg, location=('localhost', 5000)):
-	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	sock.connect(location)
+def putAMsg(sock, msg, location=('localhost', 5000)):
 	if type(msg) is bytes:
 		toPut = msg
 	else:
 		msg = json.dumps(msg)
 		toPut = msg.encode('utf8')
 	sock.sendall(toPut)
-	sock.close()
 	
 toSendCpp = {
 	'jId': 1,
@@ -77,14 +71,19 @@ if __name__ == '__main__':
 	q.put(toSendGo)
 	q.put(toSendC)
 
+	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+	sock.connect((addr, port))
+
 	while True:
 		if not q.empty():
 			toPut = q.get()	
-			putAMsg(toPut)
+			putAMsg(sock, toPut)
 			print("MSG PUT: ", toPut)
 		else:
-			putAMsg(b'')
+			putAMsg(sock, b'')
 
-		msgGot = getAMsg()
+		msgGot = getAMsg(sock)
 		if msgGot:
 			print("MSG GOT: ", msgGot)
+	
