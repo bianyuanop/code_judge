@@ -41,6 +41,7 @@ class JudgeHoster:
 				runResult = runner.getResult()
 				print(runResult)
 				toSend = {
+					'jId': r_id,
 					'err_code': runResult['err_code'],
 					'error': runResult['errmess'],
 					'output': runResult['retval'],
@@ -99,17 +100,6 @@ class JudgeHoster:
 			"p_in": p_in
 		}
             
-        # Interface return
-        # - error : err_code and errmess {'err_code': 1, 'errmess'}
-        # - output : 
-	def writeMsg(self, err_code, error, output, right):
-		return str({
-			'err_code': err_code,
-			'error': error,
-			'output': output,
-			'right': right
-			})
-
 	def outputRight(self, output, suppose):
 		return output == suppose
 
@@ -124,17 +114,3 @@ def recv_all(sock):
 			break
 	
 	return data
-
-
-if __name__ == '__main__':
-	j = JudgeHoster()
-	print(j.writeMsg(1, "something", "output", True))
-	supposeIn = {
-		'jId':1,
-		'code':"Code",
-		'lang':'go',
-		'suppose':'\n',
-		'input':'input',
-	}
-	print(j.parseMsg(json.dumps(supposeIn)))
-	
